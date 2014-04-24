@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using LibGit2Sharp;
 using Sep.Git.Tfs.Core.TfsInterop;
 using Xunit;
 
@@ -237,10 +238,42 @@ namespace Sep.Git.Tfs.Test.Integration
                 r.Changeset(3, "Add an ignored file", DateTime.Parse("2012-01-03 12:12:12 -05:00"))
                  .Change(TfsChangeType.Add, TfsItemType.File, "$/MyProject/app.exe", "Do not include");
             });
-            h.Run("clone", h.TfsUrl, "$/MyProject", "MyProject", "--ignore-regex=.exe$");
+            h.Run("clone", h.TfsUrl, "$/MyProject", "MyProject", "--ignore-regex=.exe$", "--autocrlf=false");
             h.AssertFileInWorkspace("MyProject", "README", "tldr\nanother line\n");
             h.AssertNoFileInWorkspace("MyProject", "app.exe");
         }
+
+        [FactExceptOnUnix]
+        public void LineEndingsNormalizedWhenAutocrlf()
+        {
+            h.SetupFake(r =>
+            {
+                r.Changeset(1, "Project created from template", DateTime.Parse("2012-01-01 12:12:12 -05:00"))
+                    .Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject");
+                r.Changeset(2, "Add some files", DateTime.Parse("2012-01-02 12:12:12 -05:00"))
+                 .Change(TfsChangeType.Add, TfsItemType.File, "$/MyProject/README", "tld \r\n another line \r\n");
+            });
+            h.Run("clone", h.TfsUrl, "$/MyProject", "MyProject","--autocrlf=true");
+            
+            h.AssertFileInWorkspace("MyProject", "README", "tld \r\n another line \r\n");
+            h.AssertFileInIndex("MyProject", "README", "tld \n another line \n");
+        }
+
+        [FactExceptOnUnix]
+        public void LineNotNormalizedWhenAutocrlfFalse()
+        {
+            h.SetupFake(r =>
+            {
+                r.Changeset(1, "Project created from template", DateTime.Parse("2012-01-01 12:12:12 -05:00"))
+                    .Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject");
+                r.Changeset(2, "Add some files", DateTime.Parse("2012-01-02 12:12:12 -05:00"))
+                 .Change(TfsChangeType.Add, TfsItemType.File, "$/MyProject/README", "tld \r\n another line \r\n");
+            });
+            h.Run("clone", h.TfsUrl, "$/MyProject", "MyProject", "--autocrlf=false");
+            h.AssertFileInWorkspace("MyProject", "README", "tld \r\n another line \r\n");
+            h.AssertFileInIndex("MyProject", "README", "tld \r\n another line \r\n");
+        }
+
 
         [FactExceptOnUnix]
         public void HandlesIgnoredFilesParticipatingInRenames()
