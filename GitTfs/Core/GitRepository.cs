@@ -456,9 +456,14 @@ namespace Sep.Git.Tfs.Core
             if (!destination.Directory.Exists)
                 destination.Directory.Create();
             if ((blob = _repository.Lookup<Blob>(sha)) != null)
-                using (Stream stream = blob.GetContentStream(new FilteringOptions(String.Empty)))
+            {
                 using (var outstream = File.Create(destination.FullName))
-                        stream.CopyTo(outstream);
+                {
+                    if (blob.Size > 0)
+                        using (Stream stream = blob.GetContentStream(new FilteringOptions(String.Empty)))
+                            stream.CopyTo(outstream);
+                }
+            }
         }
 
         public string AssertValidBranchName(string gitBranchName)
